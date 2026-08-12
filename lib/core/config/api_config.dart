@@ -5,6 +5,7 @@ class ApiConfig {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     //defaultValue: 'https://9pk1g821-3000.use2.devtunnels.ms');
-    defaultValue: 'https://api-creditos.queseriasv.com',
+    //defaultValue: 'https://api-creditos.queseriasv.com',
+    defaultValue: 'https://api.credinexosv.com',
   );
 }
