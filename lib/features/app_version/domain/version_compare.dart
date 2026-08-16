@@ -1,6 +1,8 @@
 int compareVersions(String installed, String required) {
-  final installedParts = _parseVersion(installed);
-  final requiredParts = _parseVersion(required);
+  final installedVersion = _FlutterVersion.parse(installed);
+  final requiredVersion = _FlutterVersion.parse(required);
+  final installedParts = installedVersion.nameParts;
+  final requiredParts = requiredVersion.nameParts;
   final length = installedParts.length > requiredParts.length
       ? installedParts.length
       : requiredParts.length;
@@ -10,28 +12,58 @@ int compareVersions(String installed, String required) {
     final right = i < requiredParts.length ? requiredParts[i] : 0;
     if (left != right) return left.compareTo(right);
   }
-  return 0;
+
+  return installedVersion.buildNumber.compareTo(requiredVersion.buildNumber);
 }
 
 bool isVersionLowerThan(String installed, String required) {
   return compareVersions(installed, required) < 0;
 }
 
-List<int> _parseVersion(String value) {
-  final clean = value.trim().split('+').first;
-  if (clean.isEmpty) return const [0];
-  return clean.split('.').map((part) {
-    final digits = _leadingDigits(part.trim());
-    return int.tryParse(digits) ?? 0;
-  }).toList();
+class _FlutterVersion {
+  const _FlutterVersion({
+    required this.nameParts,
+    required this.buildNumber,
+  });
+
+  final List<int> nameParts;
+  final int buildNumber;
+
+  static _FlutterVersion parse(String value) {
+    final clean = value.trim();
+    if (clean.isEmpty) {
+      throw FormatException('Version Flutter invalida', value);
+    }
+
+    final splitBuild = clean.split('+');
+    if (splitBuild.length > 2) {
+      throw FormatException('Version Flutter invalida', value);
+    }
+
+    final namePartsRaw = splitBuild.first.split('.');
+    if (namePartsRaw.length != 3 || !namePartsRaw.every(_isNumeric)) {
+      throw FormatException('Version Flutter invalida', value);
+    }
+
+    final buildRaw = splitBuild.length == 2 ? splitBuild[1] : '0';
+    if (!_isNumeric(buildRaw)) {
+      throw FormatException('Version Flutter invalida', value);
+    }
+
+    final nameParts = namePartsRaw.map(int.parse).toList();
+    final buildNumber = int.parse(buildRaw);
+
+    return _FlutterVersion(
+      nameParts: nameParts,
+      buildNumber: buildNumber,
+    );
+  }
 }
 
-String _leadingDigits(String value) {
-  final buffer = StringBuffer();
+bool _isNumeric(String value) {
+  if (value.isEmpty) return false;
   for (final codeUnit in value.codeUnits) {
-    final isDigit = codeUnit >= 48 && codeUnit <= 57;
-    if (!isDigit) break;
-    buffer.writeCharCode(codeUnit);
+    if (codeUnit < 48 || codeUnit > 57) return false;
   }
-  return buffer.isEmpty ? '0' : buffer.toString();
+  return true;
 }
