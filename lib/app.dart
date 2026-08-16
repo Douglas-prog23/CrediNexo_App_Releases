@@ -187,7 +187,12 @@ class _CredinexoAppState extends State<CredinexoApp>
     final installed = _installedVersion;
     if (status == null || installed == null) return false;
     if (!status.actualizacionObligatoria) return false;
-    return isVersionLowerThan(installed.version, status.versionMinima);
+    try {
+      return isVersionLowerThan(installed.display, status.versionMinima);
+    } catch (error) {
+      debugPrint('[Credinexo] Version minima invalida: $error');
+      return false;
+    }
   }
 }
 
