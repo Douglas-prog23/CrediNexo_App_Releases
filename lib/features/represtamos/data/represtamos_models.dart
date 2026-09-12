@@ -5,6 +5,7 @@ class CreditoReprestamoDisponible {
     required this.numeroPrestamo,
     required this.codigoCliente,
     required this.cliente,
+    required this.clienteNombreCompleto,
     required this.dui,
     required this.monto,
     required this.tipo,
@@ -22,6 +23,12 @@ class CreditoReprestamoDisponible {
     required this.carteraNombre,
     required this.gestorNombre,
     required this.aplicaReprestamo,
+    required this.aplicaAutomaticamente,
+    required this.habilitadoReprestamoEspecial,
+    required this.habilitadoReprestamoMotivo,
+    required this.habilitadoReprestamoFecha,
+    required this.habilitadoReprestamoPorNombre,
+    required this.motivoNoAplica,
   });
 
   final int creditoId;
@@ -29,6 +36,7 @@ class CreditoReprestamoDisponible {
   final String? numeroPrestamo;
   final String? codigoCliente;
   final String cliente;
+  final String clienteNombreCompleto;
   final String? dui;
   final double monto;
   final String? tipo;
@@ -46,6 +54,24 @@ class CreditoReprestamoDisponible {
   final String? carteraNombre;
   final String? gestorNombre;
   final bool aplicaReprestamo;
+  final bool aplicaAutomaticamente;
+  final bool habilitadoReprestamoEspecial;
+  final String? habilitadoReprestamoMotivo;
+  final String? habilitadoReprestamoFecha;
+  final String? habilitadoReprestamoPorNombre;
+  final String? motivoNoAplica;
+
+  bool get seleccionable => aplicaReprestamo || habilitadoReprestamoEspecial;
+
+  bool get esHabilitadoEspecial =>
+      habilitadoReprestamoEspecial && !aplicaAutomaticamente;
+
+  String get clienteVisual {
+    final completo = clienteNombreCompleto.trim();
+    if (completo.isNotEmpty) return completo;
+    final actual = cliente.trim();
+    return actual.isNotEmpty ? actual : 'Cliente sin nombre';
+  }
 
   String get referenciaVisual {
     final ref = referenciaCredito?.trim();
@@ -66,12 +92,25 @@ class CreditoReprestamoDisponible {
   }
 
   factory CreditoReprestamoDisponible.fromJson(Map<String, dynamic> json) {
+    final habilitadoEspecial =
+        _asBool(json['habilitadoReprestamoEspecial']) ?? false;
+    final aplicaAutomaticamente = _asBool(json['aplicaAutomaticamente']) ??
+        _asBool(json['aplica']) ??
+        false;
+    final tieneElegibilidad = json.containsKey('aplicaReprestamo') ||
+        json.containsKey('aplica') ||
+        json.containsKey('aplicaAutomaticamente') ||
+        json.containsKey('habilitadoReprestamoEspecial');
+    final aplicaReprestamo = (_asBool(json['aplicaReprestamo']) ??
+            (tieneElegibilidad ? false : true)) ||
+        habilitadoEspecial;
     return CreditoReprestamoDisponible(
       creditoId: _asInt(json['creditoId']) ?? _asInt(json['id']) ?? 0,
       referenciaCredito: _nullableString(json['referenciaCredito']),
       numeroPrestamo: _nullableString(json['numeroPrestamo']),
       codigoCliente: _nullableString(json['codigoCliente']),
-      cliente: _asString(json['cliente']),
+      cliente: _clienteTexto(json),
+      clienteNombreCompleto: _nombreCompletoCliente(json),
       dui: _nullableString(json['dui']),
       monto: _asDouble(json['monto']),
       tipo: _firstNonEmpty([
@@ -94,7 +133,17 @@ class CreditoReprestamoDisponible {
       valorFuturoPrestamo: _asDouble(json['valorFuturoPrestamo']),
       carteraNombre: _nullableString(json['carteraNombre']),
       gestorNombre: _nullableString(json['gestorNombre']),
-      aplicaReprestamo: json['aplicaReprestamo'] != false,
+      aplicaReprestamo: aplicaReprestamo,
+      aplicaAutomaticamente: aplicaAutomaticamente,
+      habilitadoReprestamoEspecial: habilitadoEspecial,
+      habilitadoReprestamoMotivo:
+          _nullableString(json['habilitadoReprestamoMotivo']),
+      habilitadoReprestamoFecha:
+          _nullableString(json['habilitadoReprestamoFecha']),
+      habilitadoReprestamoPorNombre:
+          _nullableString(json['habilitadoReprestamoPorNombre']),
+      motivoNoAplica: _nullableString(json['motivoNoAplica']) ??
+          _nullableString(json['motivo']),
     );
   }
 }
@@ -152,10 +201,17 @@ class ReprestamoContexto {
   final ReprestamoTecnicoPromotor? tecnicoPromotor;
 
   factory ReprestamoContexto.fromJson(Map<String, dynamic> json) {
+    final creditoJson =
+        json['credito'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+    final clienteJson =
+        json['cliente'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+    final creditoConCliente = <String, dynamic>{
+      ...creditoJson,
+      if (_nombreCompletoCliente(clienteJson).trim().isNotEmpty)
+        'nombreCliente': _nombreCompletoCliente(clienteJson),
+    };
     return ReprestamoContexto(
-      credito: ReprestamoCreditoContexto.fromJson(
-        json['credito'] as Map<String, dynamic>? ?? const {},
-      ),
+      credito: ReprestamoCreditoContexto.fromJson(creditoConCliente),
       resumen: ReprestamoResumenContexto.fromJson(
         json['resumen'] as Map<String, dynamic>? ?? const {},
       ),
@@ -287,6 +343,12 @@ class ReprestamoResumenContexto {
 class ReprestamoElegibilidadContexto {
   const ReprestamoElegibilidadContexto({
     required this.aplica,
+    required this.aplicaAutomaticamente,
+    required this.habilitadoReprestamoEspecial,
+    required this.habilitadoReprestamoMotivo,
+    required this.habilitadoReprestamoFecha,
+    required this.habilitadoReprestamoPorNombre,
+    required this.motivo,
     required this.totalPagado,
     required this.interesTotal,
     required this.capitalRequerido,
@@ -295,15 +357,38 @@ class ReprestamoElegibilidadContexto {
   });
 
   final bool aplica;
+  final bool aplicaAutomaticamente;
+  final bool habilitadoReprestamoEspecial;
+  final String? habilitadoReprestamoMotivo;
+  final String? habilitadoReprestamoFecha;
+  final String? habilitadoReprestamoPorNombre;
+  final String? motivo;
   final double totalPagado;
   final double interesTotal;
   final double capitalRequerido;
   final double montoMinimoRequerido;
   final double faltaParaAplicar;
 
+  bool get esHabilitadoEspecial =>
+      habilitadoReprestamoEspecial && !aplicaAutomaticamente;
+
   factory ReprestamoElegibilidadContexto.fromJson(Map<String, dynamic> json) {
+    final habilitadoEspecial =
+        _asBool(json['habilitadoReprestamoEspecial']) ?? false;
+    final aplicaAutomaticamente = _asBool(json['aplicaAutomaticamente']) ??
+        (_asBool(json['aplica']) == true && !habilitadoEspecial);
     return ReprestamoElegibilidadContexto(
-      aplica: json['aplica'] == true,
+      aplica: (_asBool(json['aplica']) ?? false) || habilitadoEspecial,
+      aplicaAutomaticamente: aplicaAutomaticamente,
+      habilitadoReprestamoEspecial: habilitadoEspecial,
+      habilitadoReprestamoMotivo:
+          _nullableString(json['habilitadoReprestamoMotivo']),
+      habilitadoReprestamoFecha:
+          _nullableString(json['habilitadoReprestamoFecha']),
+      habilitadoReprestamoPorNombre:
+          _nullableString(json['habilitadoReprestamoPorNombre']),
+      motivo: _nullableString(json['motivoNoAplica']) ??
+          _nullableString(json['motivo']),
       totalPagado: _asDouble(json['totalPagado']),
       interesTotal: _asDouble(json['interesTotal']),
       capitalRequerido: _asDouble(json['capitalRequerido']),
@@ -479,6 +564,93 @@ String _asString(dynamic value) => value == null ? '' : '$value';
 String? _nullableString(dynamic value) {
   final text = _asString(value).trim();
   return text.isEmpty ? null : text;
+}
+
+bool? _asBool(dynamic value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  final text = _asString(value).trim().toLowerCase();
+  if (text.isEmpty) return null;
+  if (['true', '1', 'si', 'yes'].contains(text)) return true;
+  if (['false', '0', 'no'].contains(text)) return false;
+  return null;
+}
+
+String _joinClean(List<dynamic> values) {
+  final joined = values
+      .map((value) => _asString(value).trim())
+      .where((value) => value.isNotEmpty)
+      .join(' ');
+  return _collapseWhitespace(joined);
+}
+
+String _collapseWhitespace(String value) {
+  final buffer = StringBuffer();
+  var previousWasWhitespace = false;
+  for (final codeUnit in value.trim().codeUnits) {
+    final isWhitespace = codeUnit <= 32;
+    if (isWhitespace) {
+      if (!previousWasWhitespace) buffer.write(' ');
+    } else {
+      buffer.writeCharCode(codeUnit);
+    }
+    previousWasWhitespace = isWhitespace;
+  }
+  return buffer.toString().trim();
+}
+
+String _nombreCompletoCliente(Map<String, dynamic> json) {
+  final clienteMap = json['cliente'] is Map<String, dynamic>
+      ? json['cliente'] as Map<String, dynamic>
+      : const <String, dynamic>{};
+  final directo = _firstNonEmpty([
+    json['clienteNombreCompleto'],
+    json['nombreCompleto'],
+    json['nombreCliente'],
+    clienteMap['nombreCompleto'],
+  ]);
+  if (directo != null && directo.isNotEmpty) return directo;
+
+  final porPartes = _joinClean([
+    json['primerNombre'],
+    json['segundoNombre'],
+    json['tercerNombre'],
+    json['primerApellido'],
+    json['segundoApellido'],
+    json['tercerApellido'],
+    json['apellidoCasada'],
+    clienteMap['primerNombre'],
+    clienteMap['segundoNombre'],
+    clienteMap['tercerNombre'],
+    clienteMap['primerApellido'],
+    clienteMap['segundoApellido'],
+    clienteMap['tercerApellido'],
+    clienteMap['apellidoCasada'],
+  ]);
+  if (porPartes.isNotEmpty) return porPartes;
+
+  final legacy = _joinClean([
+    if (json['cliente'] is! Map<String, dynamic>) json['cliente'],
+    json['clienteNombre'],
+    json['clienteApellido'],
+    clienteMap['nombre'],
+    clienteMap['apellido'],
+  ]);
+  return legacy;
+}
+
+String _clienteTexto(Map<String, dynamic> json) {
+  final clienteMap = json['cliente'] is Map<String, dynamic>
+      ? json['cliente'] as Map<String, dynamic>
+      : const <String, dynamic>{};
+  return _firstNonEmpty([
+        if (json['cliente'] is! Map<String, dynamic>) json['cliente'],
+        json['nombreCliente'],
+        json['clienteNombre'],
+        clienteMap['nombreCompleto'],
+        _joinClean([clienteMap['nombre'], clienteMap['apellido']]),
+      ]) ??
+      '';
 }
 
 String? _firstNonEmpty(List<dynamic> values) {

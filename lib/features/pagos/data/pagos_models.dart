@@ -3,24 +3,43 @@ class ClientePago {
     required this.id,
     required this.nombre,
     required this.apellido,
+    this.primerNombre,
+    this.segundoNombre,
+    this.tercerNombre,
+    this.primerApellido,
+    this.segundoApellido,
+    this.tercerApellido,
+    this.apellidoCasada,
     required this.nombreCompleto,
   });
 
   final int? id;
   final String nombre;
   final String apellido;
+  final String? primerNombre;
+  final String? segundoNombre;
+  final String? tercerNombre;
+  final String? primerApellido;
+  final String? segundoApellido;
+  final String? tercerApellido;
+  final String? apellidoCasada;
   final String nombreCompleto;
 
   factory ClientePago.fromJson(Map<String, dynamic>? json) {
     final safe = json ?? const <String, dynamic>{};
+    final nombreCompleto = _nombreCompletoCliente(safe);
     return ClientePago(
       id: _asInt(safe['id']),
       nombre: _asString(safe['nombre']),
       apellido: _asString(safe['apellido']),
-      nombreCompleto: _asString(safe['nombreCompleto']).isNotEmpty
-          ? _asString(safe['nombreCompleto'])
-          : '${_asString(safe['nombre'])} ${_asString(safe['apellido'])}'
-              .trim(),
+      primerNombre: _nullableString(safe['primerNombre']),
+      segundoNombre: _nullableString(safe['segundoNombre']),
+      tercerNombre: _nullableString(safe['tercerNombre']),
+      primerApellido: _nullableString(safe['primerApellido']),
+      segundoApellido: _nullableString(safe['segundoApellido']),
+      tercerApellido: _nullableString(safe['tercerApellido']),
+      apellidoCasada: _nullableString(safe['apellidoCasada']),
+      nombreCompleto: nombreCompleto,
     );
   }
 }
@@ -208,6 +227,7 @@ class ResumenCreditoPago {
     required this.totalAPagar,
     required this.totalPagado,
     required this.saldoPendiente,
+    required this.cuotasPagadas,
     required this.cuotasPendientes,
     required this.cuotasVencidas,
     required this.diasMora,
@@ -217,6 +237,7 @@ class ResumenCreditoPago {
   final double totalAPagar;
   final double totalPagado;
   final double saldoPendiente;
+  final int cuotasPagadas;
   final int cuotasPendientes;
   final int cuotasVencidas;
   final int diasMora;
@@ -227,6 +248,7 @@ class ResumenCreditoPago {
       totalAPagar: _asDouble(json['totalAPagar']),
       totalPagado: _asDouble(json['totalPagado']),
       saldoPendiente: _asDouble(json['saldoPendiente']),
+      cuotasPagadas: _asInt(json['cuotasPagadas']) ?? 0,
       cuotasPendientes: _asInt(json['cuotasPendientes']) ?? 0,
       cuotasVencidas: _asInt(json['cuotasVencidas']) ?? 0,
       diasMora: _asInt(json['diasMora']) ?? 0,
@@ -387,6 +409,53 @@ String _asString(dynamic value) => value == null ? '' : '$value';
 String? _nullableString(dynamic value) {
   final text = _asString(value).trim();
   return text.isEmpty ? null : text;
+}
+
+String _joinClean(List<dynamic> values) {
+  final joined = values
+      .map((value) => _asString(value).trim())
+      .where((value) => value.isNotEmpty)
+      .join(' ');
+  return _collapseWhitespace(joined);
+}
+
+String _collapseWhitespace(String value) {
+  final buffer = StringBuffer();
+  var previousWasWhitespace = false;
+  for (final codeUnit in value.trim().codeUnits) {
+    final isWhitespace = codeUnit <= 32;
+    if (isWhitespace) {
+      if (!previousWasWhitespace) buffer.write(' ');
+    } else {
+      buffer.writeCharCode(codeUnit);
+    }
+    previousWasWhitespace = isWhitespace;
+  }
+  return buffer.toString().trim();
+}
+
+String _nombreCompletoCliente(Map<String, dynamic> json) {
+  final directo = _firstNonEmpty([
+    json['clienteNombreCompleto'],
+    json['nombreCompleto'],
+    if (json['cliente'] is Map<String, dynamic>)
+      (json['cliente'] as Map<String, dynamic>)['nombreCompleto'],
+  ]);
+  if (directo.isNotEmpty) return directo;
+
+  final porPartes = _joinClean([
+    json['primerNombre'],
+    json['segundoNombre'],
+    json['tercerNombre'],
+    json['primerApellido'],
+    json['segundoApellido'],
+    json['tercerApellido'],
+    json['apellidoCasada'],
+  ]);
+  if (porPartes.isNotEmpty) return porPartes;
+
+  final legacy = _joinClean([json['nombre'], json['apellido']]);
+  return legacy.isNotEmpty ? legacy : 'Sin nombre';
 }
 
 String _firstNonEmpty(List<dynamic> values) {

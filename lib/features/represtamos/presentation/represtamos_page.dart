@@ -68,6 +68,17 @@ class _ReprestamosPageState extends State<ReprestamosPage> {
   }
 
   Future<void> _openForm(CreditoReprestamoDisponible credito) async {
+    if (!credito.seleccionable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            credito.motivoNoAplica ??
+                'Este credito no aplica para re-prestamo.',
+          ),
+        ),
+      );
+      return;
+    }
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => ReprestamoFormPage(creditoId: credito.creditoId),
@@ -300,7 +311,7 @@ class _ReprestamosTable extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: 650,
+          width: 680,
           child: Column(
             children: [
               Container(
@@ -309,7 +320,7 @@ class _ReprestamosTable extends StatelessWidget {
                 child: const Row(
                   children: [
                     _HeaderCell('Codigo', width: 120),
-                    _HeaderCell('Nombre', width: 190),
+                    _HeaderCell('Nombre', width: 220),
                     _HeaderCell('Tipo', width: 110),
                     _HeaderCell('Monto', width: 110, alignRight: true),
                     _HeaderCell('Accion', width: 120, centered: true),
@@ -349,10 +360,7 @@ class _ReprestamoRow extends StatelessWidget {
         child: Row(
           children: [
             _BodyCell(credito.referenciaVisual, width: 120),
-            _BodyCell(
-              credito.cliente.isEmpty ? 'Cliente sin nombre' : credito.cliente,
-              width: 190,
-            ),
+            _NombreCell(credito: credito, width: 220),
             SizedBox(width: 110, child: _TipoChip(text: credito.tipoVisual)),
             _BodyCell(
               moneyFormat(credito.monto),
@@ -368,11 +376,70 @@ class _ReprestamoRow extends StatelessWidget {
                     minimumSize: const Size(92, 34),
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                   ),
-                  onPressed: onSolicitar,
+                  onPressed: credito.seleccionable ? onSolicitar : null,
                   child: const Text('Solicitar'),
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NombreCell extends StatelessWidget {
+  const _NombreCell({required this.credito, required this.width});
+
+  final CreditoReprestamoDisponible credito;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              credito.clienteVisual,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+            ),
+            if (credito.esHabilitadoEspecial) ...[
+              const SizedBox(height: 4),
+              const _EspecialChip(),
+              if ((credito.habilitadoReprestamoMotivo ?? '').isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  'Motivo: ${credito.habilitadoReprestamoMotivo}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.orange.shade900,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ],
+            if (!credito.seleccionable) ...[
+              const SizedBox(height: 4),
+              Text(
+                credito.motivoNoAplica ?? 'No aplica',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -467,6 +534,32 @@ class _TipoChip extends StatelessWidget {
             fontWeight: FontWeight.w900,
             fontSize: 11,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EspecialChip extends StatelessWidget {
+  const _EspecialChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFFDBA74)),
+      ),
+      child: const Text(
+        'Habilitado especial',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: Color(0xFF9A3412),
+          fontWeight: FontWeight.w900,
+          fontSize: 11,
         ),
       ),
     );
