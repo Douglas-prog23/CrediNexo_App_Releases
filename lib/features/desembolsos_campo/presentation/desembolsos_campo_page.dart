@@ -356,7 +356,9 @@ class _DesembolsoRow extends StatelessWidget {
         child: Row(
           children: [
             _BodyCell(
-              item.cliente.isEmpty ? 'Cliente sin nombre' : item.cliente,
+              item.clienteVisual.isEmpty
+                  ? 'Cliente sin nombre'
+                  : item.clienteVisual,
               width: 210,
             ),
             _BodyCell(moneyFormat(monto), width: 110, alignRight: true),

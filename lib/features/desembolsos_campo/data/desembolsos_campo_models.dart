@@ -7,6 +7,7 @@ class DesembolsoCampoDisponible {
     required this.solicitudPrestamoId,
     required this.clienteId,
     required this.cliente,
+    required this.clienteNombreCompleto,
     required this.codigoCliente,
     required this.duiMasked,
     required this.telefono,
@@ -34,6 +35,7 @@ class DesembolsoCampoDisponible {
   final int? solicitudPrestamoId;
   final int? clienteId;
   final String cliente;
+  final String clienteNombreCompleto;
   final String? codigoCliente;
   final String? duiMasked;
   final String? telefono;
@@ -63,6 +65,9 @@ class DesembolsoCampoDisponible {
 
   String get tipoLabel => esReprestamo ? 'REPRESTAMO' : 'NORMAL';
 
+  String get clienteVisual =>
+      clienteNombreCompleto.trim().isNotEmpty ? clienteNombreCompleto : cliente;
+
   String get identificadorVisual {
     if (esReprestamo) {
       return referenciaCreditoOrigen?.trim().isNotEmpty == true
@@ -86,7 +91,8 @@ class DesembolsoCampoDisponible {
       resolucionReprestamoId: _asInt(json['resolucionReprestamoId']),
       solicitudPrestamoId: _asInt(json['solicitudPrestamoId']),
       clienteId: _asInt(json['clienteId']),
-      cliente: _asString(json['cliente']),
+      cliente: _clienteTextoDesembolso(json),
+      clienteNombreCompleto: _nombreCompletoDesembolso(json),
       codigoCliente: _nullableString(json['codigoCliente']),
       duiMasked:
           _nullableString(json['duiMasked']) ?? _nullableString(json['dui']),
@@ -234,4 +240,86 @@ String _asString(dynamic value) => value == null ? '' : '$value';
 String? _nullableString(dynamic value) {
   final text = _asString(value).trim();
   return text.isEmpty ? null : text;
+}
+
+String _joinClean(List<dynamic> values) {
+  final joined = values
+      .map((value) => _asString(value).trim())
+      .where((value) => value.isNotEmpty)
+      .join(' ');
+  return _collapseWhitespace(joined);
+}
+
+String _collapseWhitespace(String value) {
+  final buffer = StringBuffer();
+  var previousWasWhitespace = false;
+  for (final codeUnit in value.trim().codeUnits) {
+    final isWhitespace = codeUnit <= 32;
+    if (isWhitespace) {
+      if (!previousWasWhitespace) buffer.write(' ');
+    } else {
+      buffer.writeCharCode(codeUnit);
+    }
+    previousWasWhitespace = isWhitespace;
+  }
+  return buffer.toString().trim();
+}
+
+String _firstNonEmpty(List<dynamic> values) {
+  for (final value in values) {
+    final text = _asString(value).trim();
+    if (text.isNotEmpty) return text;
+  }
+  return '';
+}
+
+String _nombreCompletoDesembolso(Map<String, dynamic> json) {
+  final clienteMap = json['cliente'] is Map<String, dynamic>
+      ? json['cliente'] as Map<String, dynamic>
+      : const <String, dynamic>{};
+  final directo = _firstNonEmpty([
+    json['clienteNombreCompleto'],
+    json['nombreCompleto'],
+    clienteMap['nombreCompleto'],
+  ]);
+  if (directo.isNotEmpty) return directo;
+
+  final porPartes = _joinClean([
+    json['primerNombre'],
+    json['segundoNombre'],
+    json['tercerNombre'],
+    json['primerApellido'],
+    json['segundoApellido'],
+    json['tercerApellido'],
+    json['apellidoCasada'],
+    clienteMap['primerNombre'],
+    clienteMap['segundoNombre'],
+    clienteMap['tercerNombre'],
+    clienteMap['primerApellido'],
+    clienteMap['segundoApellido'],
+    clienteMap['tercerApellido'],
+    clienteMap['apellidoCasada'],
+  ]);
+  if (porPartes.isNotEmpty) return porPartes;
+
+  final legacy = _joinClean([
+    json['cliente'],
+    json['clienteNombre'],
+    json['clienteApellido'],
+    clienteMap['nombre'],
+    clienteMap['apellido'],
+  ]);
+  return legacy.isNotEmpty ? legacy : 'Sin nombre';
+}
+
+String _clienteTextoDesembolso(Map<String, dynamic> json) {
+  final clienteMap = json['cliente'] is Map<String, dynamic>
+      ? json['cliente'] as Map<String, dynamic>
+      : const <String, dynamic>{};
+  return _firstNonEmpty([
+    if (json['cliente'] is! Map<String, dynamic>) json['cliente'],
+    json['clienteNombre'],
+    clienteMap['nombreCompleto'],
+    _joinClean([clienteMap['nombre'], clienteMap['apellido']]),
+  ]);
 }

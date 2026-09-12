@@ -227,6 +227,7 @@ class _ReprestamoFormPageState extends State<ReprestamoFormPage> {
           final contexto = snapshot.data!;
           _initForm(contexto);
           final estimado = _estimado(contexto);
+          final elegibilidad = contexto.elegibilidad;
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -250,8 +251,28 @@ class _ReprestamoFormPageState extends State<ReprestamoFormPage> {
               ),
               _SectionCard(
                 title: 'Condicion de re-prestamo',
-                trailing: const _DisponibleBadge(),
+                trailing: elegibilidad.esHabilitadoEspecial
+                    ? const _EspecialBadge()
+                    : const _DisponibleBadge(),
                 children: [
+                  if (elegibilidad.esHabilitadoEspecial) ...[
+                    _InfoRow(
+                      'Estado',
+                      'Habilitado especialmente por supervisor/admin',
+                    ),
+                    if ((elegibilidad.habilitadoReprestamoMotivo ?? '')
+                        .isNotEmpty)
+                      _InfoRow(
+                        'Motivo',
+                        elegibilidad.habilitadoReprestamoMotivo!,
+                      ),
+                    if ((elegibilidad.habilitadoReprestamoPorNombre ?? '')
+                        .isNotEmpty)
+                      _InfoRow(
+                        'Autorizado por',
+                        elegibilidad.habilitadoReprestamoPorNombre!,
+                      ),
+                  ],
                   _InfoRow('Total pagado',
                       moneyFormat(contexto.elegibilidad.totalPagado)),
                   _InfoRow('Interes total',
@@ -489,6 +510,28 @@ class _DisponibleBadge extends StatelessWidget {
       ),
       child: Text(
         'Disponible',
+        style:
+            TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 12),
+      ),
+    );
+  }
+}
+
+class _EspecialBadge extends StatelessWidget {
+  const _EspecialBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFF9A3412);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFFDBA74)),
+      ),
+      child: const Text(
+        'Habilitado especial',
         style:
             TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 12),
       ),

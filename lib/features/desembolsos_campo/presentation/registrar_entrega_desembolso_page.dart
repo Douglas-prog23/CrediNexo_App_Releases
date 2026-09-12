@@ -111,7 +111,9 @@ class _RegistrarEntregaDesembolsoPageState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.cliente.isEmpty ? 'Cliente sin nombre' : item.cliente,
+                    item.clienteVisual.isEmpty
+                        ? 'Cliente sin nombre'
+                        : item.clienteVisual,
                     style: Theme.of(context)
                         .textTheme
                         .titleMedium

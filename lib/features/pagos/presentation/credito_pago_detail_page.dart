@@ -250,8 +250,14 @@ class _ResumenCard extends StatelessWidget {
               children: [
                 Expanded(
                     child: _Metric(
+                        label: 'Monto',
+                        value: moneyFormat(contexto.credito.monto))),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: _Metric(
                         label: 'Saldo pendiente',
                         value: moneyFormat(r.saldoPendiente))),
+                const SizedBox(width: 10),
                 Expanded(
                     child: _Metric(
                         label: 'Total pagado',
@@ -263,12 +269,18 @@ class _ResumenCard extends StatelessWidget {
               children: [
                 Expanded(
                     child: _Metric(
+                        label: 'Cuotas pagadas', value: '${r.cuotasPagadas}')),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: _Metric(
                         label: 'Cuotas pendientes',
                         value: '${r.cuotasPendientes}')),
+                const SizedBox(width: 10),
                 Expanded(
                     child: _Metric(
                         label: 'Cuotas vencidas',
                         value: '${r.cuotasVencidas}')),
+                const SizedBox(width: 10),
                 Expanded(
                     child: _Metric(label: 'Dias mora', value: '${r.diasMora}')),
               ],
