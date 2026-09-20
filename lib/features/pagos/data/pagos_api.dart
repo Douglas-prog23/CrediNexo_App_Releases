@@ -66,6 +66,12 @@ class PagosApi {
     return ComprobanteRender.fromJson(response as Map<String, dynamic>);
   }
 
+  Future<ComprobanteRender> renderComprobanteCompartir(int pagoId) async {
+    final response =
+        await _client.get('/pagos/$pagoId/comprobante/compartir/render');
+    return ComprobanteRender.fromJson(response as Map<String, dynamic>);
+  }
+
   Future<ComprobanteRender> comprobanteSnapshot(int pagoId) async {
     final response = await _client.get('/pagos/$pagoId/comprobante');
     return ComprobanteRender.fromJson(response as Map<String, dynamic>);

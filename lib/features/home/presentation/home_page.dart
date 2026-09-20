@@ -4,6 +4,7 @@ import '../../../core/storage/secure_storage_service.dart';
 import '../../auth/data/auth_api.dart';
 import '../../calculadora_cuotas/calculadora_cuotas_page.dart';
 import '../../desembolsos_campo/presentation/desembolsos_campo_page.dart';
+import '../../gestion_creditos/presentation/gestion_creditos_page.dart';
 import '../../gestion_mora/presentation/gestion_mora_page.dart';
 import '../../pagos/presentation/pagos_page.dart';
 import '../../represtamos/presentation/represtamos_page.dart';
@@ -98,6 +99,14 @@ class _HomePageState extends State<HomePage> {
         visible: user?.hasPermission('pagos', 'ver') ?? false,
         onTap: () => Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const PagosPage())),
+      ),
+      _HomeAction(
+        icon: Icons.manage_search_rounded,
+        title: 'Gestion Creditos',
+        visible: user?.hasPermission('pagos', 'ver') ?? false,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const GestionCreditosPage()),
+        ),
       ),
       _HomeAction(
         icon: Icons.repeat_rounded,
