@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/date_format.dart';
@@ -6,6 +7,7 @@ import '../../../core/utils/money_format.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../data/pagos_api.dart';
 import '../data/pagos_models.dart';
+import '../services/comprobante_share_service.dart';
 import 'comprobante_printing.dart';
 
 class PagoFormPage extends StatefulWidget {
@@ -19,6 +21,7 @@ class PagoFormPage extends StatefulWidget {
 
 class _PagoFormPageState extends State<PagoFormPage> {
   final _api = PagosApi();
+  final _shareService = const ComprobanteShareService();
   final _formKey = GlobalKey<FormState>();
   final _montoController = TextEditingController();
   final _montoRecibidoController = TextEditingController();
@@ -99,13 +102,18 @@ class _PagoFormPageState extends State<PagoFormPage> {
       barrierDismissible: false,
       builder: (dialogContext) {
         var printing = false;
+        var sharing = false;
         String? printError;
+        String? shareError;
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final busy = printing || sharing;
+
             Future<void> printTicket() async {
               setDialogState(() {
                 printing = true;
                 printError = null;
+                shareError = null;
               });
               try {
                 final comprobante = await _api.renderComprobante(pago.id);
@@ -122,6 +130,40 @@ class _PagoFormPageState extends State<PagoFormPage> {
               }
             }
 
+            Future<void> shareTicket() async {
+              final target = await _showComprobanteShareOptions(dialogContext);
+              if (target == null) return;
+              setDialogState(() {
+                sharing = true;
+                printError = null;
+                shareError = null;
+              });
+              try {
+                final comprobante =
+                    await _api.renderComprobanteCompartir(pago.id);
+                await _shareService.shareComprobante(
+                  comprobante: comprobante,
+                  pagoId: pago.id,
+                  monto: pago.monto,
+                  contexto: widget.contexto,
+                  target: target,
+                );
+              } on ApiException catch (error) {
+                shareError = error.message;
+              } on PlatformException catch (error) {
+                shareError = error.code == 'WHATSAPP_BUSINESS_NOT_INSTALLED'
+                    ? 'WhatsApp Business no esta instalado en este dispositivo.'
+                    : 'No se pudo abrir WhatsApp Business.';
+              } catch (_) {
+                shareError =
+                    'No se pudo compartir el comprobante. Intente nuevamente.';
+              } finally {
+                if (context.mounted) {
+                  setDialogState(() => sharing = false);
+                }
+              }
+            }
+
             return AlertDialog(
               title: const Text('Pago registrado correctamente.'),
               content: Column(
@@ -129,10 +171,24 @@ class _PagoFormPageState extends State<PagoFormPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Comprobante #${pago.id} listo para imprimir.'),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Tambien puede compartirlo como PDF por WhatsApp Business.',
+                  ),
                   if (printError != null) ...[
                     const SizedBox(height: 12),
                     Text(
                       printError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  if (shareError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      shareError!,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.error,
                         fontWeight: FontWeight.w700,
@@ -144,11 +200,22 @@ class _PagoFormPageState extends State<PagoFormPage> {
               actions: [
                 TextButton(
                   onPressed:
-                      printing ? null : () => Navigator.of(dialogContext).pop(),
+                      busy ? null : () => Navigator.of(dialogContext).pop(),
                   child: const Text('Finalizar'),
                 ),
+                OutlinedButton.icon(
+                  onPressed: busy ? null : shareTicket,
+                  icon: sharing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.business_center_outlined),
+                  label: const Text('Enviar por WhatsApp Business'),
+                ),
                 FilledButton.icon(
-                  onPressed: printing ? null : printTicket,
+                  onPressed: busy ? null : printTicket,
                   icon: printing
                       ? const SizedBox(
                           width: 16,
@@ -161,6 +228,48 @@ class _PagoFormPageState extends State<PagoFormPage> {
               ],
             );
           },
+        );
+      },
+    );
+  }
+
+  Future<ComprobanteShareTarget?> _showComprobanteShareOptions(
+    BuildContext dialogContext,
+  ) {
+    return showModalBottomSheet<ComprobanteShareTarget>(
+      context: dialogContext,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Compartir comprobante por WhatsApp Business',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                _ShareOptionTile(
+                  icon: Icons.business_center_outlined,
+                  title: 'WhatsApp Business',
+                  subtitle: 'Abrir WhatsApp Business con el PDF adjunto.',
+                  target: ComprobanteShareTarget.whatsappBusiness,
+                ),
+                const Divider(height: 8),
+                ListTile(
+                  leading: const Icon(Icons.close_rounded),
+                  title: const Text('Cancelar'),
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -285,6 +394,31 @@ class _PagoFormPageState extends State<PagoFormPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ShareOptionTile extends StatelessWidget {
+  const _ShareOptionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.target,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final ComprobanteShareTarget target;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text(subtitle),
+      onTap: () => Navigator.of(context).pop(target),
     );
   }
 }

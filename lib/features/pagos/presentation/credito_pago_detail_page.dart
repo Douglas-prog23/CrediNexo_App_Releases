@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/secure_storage_service.dart';
@@ -10,6 +11,7 @@ import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../data/pagos_api.dart';
 import '../data/pagos_models.dart';
+import '../services/comprobante_share_service.dart';
 import 'comprobante_preview_page.dart';
 import 'pago_form_page.dart';
 
@@ -24,9 +26,11 @@ class CreditoPagoDetailPage extends StatefulWidget {
 
 class _CreditoPagoDetailPageState extends State<CreditoPagoDetailPage> {
   final _api = PagosApi();
+  final _shareService = const ComprobanteShareService();
   final _storage = SecureStorageService();
   late Future<PagoContexto> _future;
   AuthUser? _user;
+  int? _sharingPagoId;
 
   @override
   void initState() {
@@ -107,6 +111,42 @@ class _CreditoPagoDetailPageState extends State<CreditoPagoDetailPage> {
     }
   }
 
+  Future<void> _sharePago(PagoContexto contexto, PagoHistorial pago) async {
+    setState(() => _sharingPagoId = pago.id);
+    try {
+      final comprobante = await _api.renderComprobanteCompartir(pago.id);
+      await _shareService.shareComprobante(
+        comprobante: comprobante,
+        pagoId: pago.id,
+        monto: pago.monto,
+        contexto: contexto,
+        target: ComprobanteShareTarget.whatsappBusiness,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      final message = error.code == 'WHATSAPP_BUSINESS_NOT_INSTALLED'
+          ? 'WhatsApp Business no esta instalado en este dispositivo.'
+          : 'No se pudo abrir WhatsApp Business.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo compartir el comprobante.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _sharingPagoId = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -175,8 +215,10 @@ class _CreditoPagoDetailPageState extends State<CreditoPagoDetailPage> {
                         canRequest: pago.reimpresion.puedeSolicitar &&
                             (_user?.hasPermission('pagos', 'ver') ?? false),
                         canPrint: pago.reimpresion.puedeImprimir,
+                        sharing: _sharingPagoId == pago.id,
                         onRequest: () => _solicitarReimpresion(pago),
                         onPrint: () => _openComprobante(pago),
+                        onShare: () => _sharePago(contexto, pago),
                       ),
                     ),
             ],
@@ -340,15 +382,19 @@ class _PagoTile extends StatelessWidget {
     required this.pago,
     required this.canRequest,
     required this.canPrint,
+    required this.sharing,
     required this.onRequest,
     required this.onPrint,
+    required this.onShare,
   });
 
   final PagoHistorial pago;
   final bool canRequest;
   final bool canPrint;
+  final bool sharing;
   final VoidCallback onRequest;
   final VoidCallback onPrint;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -358,12 +404,30 @@ class _PagoTile extends StatelessWidget {
         title: Text('Pago #${pago.id} - ${moneyFormat(pago.monto)}'),
         subtitle: Text(
             '${dateFormat(pago.fechaPago)} | ${pago.medioPago ?? 'Sin medio'}'),
-        trailing: _ReimpresionAction(
-          estado: pago.reimpresion,
-          canRequest: canRequest,
-          canPrint: canPrint,
-          onRequest: onRequest,
-          onPrint: onPrint,
+        trailing: Wrap(
+          spacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (sharing)
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              IconButton(
+                tooltip: 'Compartir por WhatsApp Business',
+                icon: const Icon(Icons.share_rounded),
+                onPressed: onShare,
+              ),
+            _ReimpresionAction(
+              estado: pago.reimpresion,
+              canRequest: canRequest,
+              canPrint: canPrint,
+              onRequest: onRequest,
+              onPrint: onPrint,
+            ),
+          ],
         ),
       ),
     );
