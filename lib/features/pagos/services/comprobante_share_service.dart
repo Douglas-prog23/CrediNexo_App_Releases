@@ -28,7 +28,7 @@ class ComprobanteShareService {
     );
     final directory = await getTemporaryDirectory();
     final referencia = _safeFilePart(contexto.credito.referenciaVisual);
-    final timestamp = _fileTimestamp(DateTime.now());
+    final timestamp = _fileTimestamp(nowElSalvador());
     final fileName = referencia.isEmpty
         ? 'comprobante_pago_${timestamp}_$pagoId.pdf'
         : 'comprobante_pago_${timestamp}_$referencia.pdf';
@@ -69,7 +69,7 @@ String _buildMessage({
   required ComprobanteShareTarget target,
 }) {
   final cliente = contexto.credito.cliente.nombreCompleto.trim();
-  final fecha = dateFormat(DateTime.now().toIso8601String());
+  final fecha = dateFormat(nowElSalvador());
   final appHint = switch (target) {
     ComprobanteShareTarget.whatsappBusiness =>
       'Seleccione WhatsApp Business para enviarlo.',

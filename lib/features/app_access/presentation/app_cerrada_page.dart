@@ -118,7 +118,7 @@ class _AppCerradaPageState extends State<AppCerradaPage> {
                         style: const TextStyle(color: Colors.blueGrey),
                       ),
                       const SizedBox(height: 18),
-                      _InfoRow(label: 'Horario', value: '6:00 AM a 7:00 PM'),
+                      _InfoRow(label: 'Horario', value: '6:00 AM a 9:00 PM'),
                       _InfoRow(
                           label: 'Hora servidor',
                           value: widget.status.horaActual),

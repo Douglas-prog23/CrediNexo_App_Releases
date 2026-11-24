@@ -37,7 +37,7 @@ class AppStatus {
       horaActual: '${json['horaActual'] ?? ''}',
       fechaActual: '${json['fechaActual'] ?? ''}',
       horaApertura: '${json['horaApertura'] ?? '06:00'}',
-      horaCierre: '${json['horaCierre'] ?? '19:00'}',
+      horaCierre: '${json['horaCierre'] ?? '21:00'}',
       zonaHoraria: '${json['zonaHoraria'] ?? 'America/El_Salvador'}',
       mensaje: '${json['mensaje'] ?? ''}',
       solicitudAcceso: json['solicitudAcceso'] is Map

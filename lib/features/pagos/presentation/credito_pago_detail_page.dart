@@ -255,6 +255,12 @@ class _Header extends StatelessWidget {
             Text('Codigo cliente: ${credito.codigoClienteVisual}'),
             if ((credito.carteraNombre ?? '').isNotEmpty)
               Text('Cartera: ${credito.carteraNombre}'),
+            Text(
+              'Fecha desembolso: ${credito.fechaDesembolso == null ? '-' : dateFormat(credito.fechaDesembolso!)}',
+            ),
+            Text(
+              'Fecha vencimiento: ${credito.fechaVencimiento == null ? '-' : dateFormat(credito.fechaVencimiento!)}',
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
