@@ -184,6 +184,8 @@ class CreditoContexto {
     required this.estado,
     required this.tipo,
     required this.monto,
+    required this.fechaDesembolso,
+    required this.fechaVencimiento,
     required this.carteraNombre,
     required this.cliente,
   });
@@ -195,6 +197,8 @@ class CreditoContexto {
   final String estado;
   final String tipo;
   final double monto;
+  final String? fechaDesembolso;
+  final String? fechaVencimiento;
   final String? carteraNombre;
   final ClientePago cliente;
 
@@ -215,6 +219,8 @@ class CreditoContexto {
       estado: _asString(json['estado']),
       tipo: _asString(json['tipo']),
       monto: _asDouble(json['monto']),
+      fechaDesembolso: _nullableString(json['fechaDesembolso']),
+      fechaVencimiento: _nullableString(json['fechaVencimiento']),
       carteraNombre: _nullableString(json['carteraNombre']),
       cliente: ClientePago.fromJson(
           json['cliente'] is Map<String, dynamic> ? json['cliente'] : null),

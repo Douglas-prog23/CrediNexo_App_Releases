@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'core/storage/secure_storage_service.dart';
@@ -30,16 +32,22 @@ class _CredinexoAppState extends State<CredinexoApp>
   AppStatus? _appStatus;
   AppVersionStatus? _appVersionStatus;
   InstalledAppVersion? _installedVersion;
+  Timer? _appStatusTimer;
+  bool _checkingAppStatus = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _appStatusTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (_authenticated) _checkAppStatus();
+    });
     _bootstrap();
   }
 
   @override
   void dispose() {
+    _appStatusTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -116,14 +124,20 @@ class _CredinexoAppState extends State<CredinexoApp>
   }
 
   Future<void> _checkAppStatus() async {
-    final status = await _safeStatus();
-    if (!mounted) return;
-    setState(() {
-      _appStatus = status;
-      if (status?.puedeIngresar == false) {
-        _authenticated = true;
-      }
-    });
+    if (_checkingAppStatus) return;
+    _checkingAppStatus = true;
+    try {
+      final status = await _safeStatus();
+      if (!mounted || status == null) return;
+      setState(() {
+        _appStatus = status;
+        if (!status.puedeIngresar) {
+          _authenticated = true;
+        }
+      });
+    } finally {
+      _checkingAppStatus = false;
+    }
   }
 
   Future<void> _checkAppVersion() async {
